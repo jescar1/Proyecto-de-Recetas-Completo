@@ -140,7 +140,7 @@ export function AdminPanel({ onLogout, user }: AdminPanelProps) {
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2 text-gray-700">
                 <User className="w-5 h-5" />
-                <span>{user.user_metadata?.name || user.email}</span>
+                
                 <span className="px-2 py-1 bg-orange-100 text-orange-700 rounded text-xs">
                   Admin
                 </span>
