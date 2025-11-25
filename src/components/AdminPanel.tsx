@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { RecipeForm } from './RecipeForm';
 import { AdminRecipeCard } from './AdminRecipeCard';
-import { ChefHat, LogOut, Plus, User } from 'lucide-react';
+import { LogOut, Plus, User } from 'lucide-react';
 import { projectId, publicAnonKey } from '../utils/supabase/info';
 
 interface Recipe {
@@ -129,12 +129,10 @@ export function AdminPanel({ onLogout, user }: AdminPanelProps) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-amber-600 rounded-full flex items-center justify-center">
-                <ChefHat className="w-6 h-6 text-white" />
-              </div>
+              {/* Ícono del sombrero eliminado */}
               <div>
-                <h1 className="text-gray-900">Panel de Administración</h1>
-                <p className="text-gray-600">Gestiona las recetas</p>
+                <h1 className="text-gray-900 text-xs sm:text-sm md:text-base lg:text-lg">Panel de Administración</h1>
+                <p className="text-gray-600 text-[10px] sm:text-xs">Gestiona las recetas</p>
               </div>
             </div>
             <div className="flex items-center gap-4">
@@ -185,7 +183,6 @@ export function AdminPanel({ onLogout, user }: AdminPanelProps) {
           </div>
         ) : recipes.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-lg shadow">
-            <ChefHat className="w-16 h-16 text-gray-300 mx-auto mb-4" />
             <p className="text-gray-600 mb-4">No hay recetas aún</p>
             <button
               onClick={() => setShowForm(true)}
