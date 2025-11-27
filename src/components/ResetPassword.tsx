@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { projectId, publicAnonKey } from '../utils/supabase/info';
-import { Lock, Check } from 'lucide-react';
+import { Lock, Check, AlertCircle } from 'lucide-react';
 import logo from '../logo.png';
 
 const supabase = createClient(
@@ -15,6 +15,47 @@ export function ResetPassword() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
+  const [validatingToken, setValidatingToken] = useState(true);
+  const [tokenValid, setTokenValid] = useState(false);
+
+  useEffect(() => {
+    // Extraer y validar el token del hash de la URL
+    const validateToken = async () => {
+      try {
+        // Supabase pone el token en el hash fragment (#)
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const accessToken = hashParams.get('access_token');
+        const type = hashParams.get('type');
+        
+        console.log('Hash params:', { accessToken: accessToken?.substring(0, 20), type });
+
+        // Verificar que sea un token de recovery
+        if (type !== 'recovery' || !accessToken) {
+          setError('Enlace inválido o expirado. Por favor, solicita un nuevo enlace de recuperación.');
+          setValidatingToken(false);
+          return;
+        }
+
+        // Verificar la sesión actual
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError || !session) {
+          setError('Sesión inválida. Por favor, solicita un nuevo enlace de recuperación.');
+          setValidatingToken(false);
+          return;
+        }
+
+        setTokenValid(true);
+      } catch (err: any) {
+        console.error('Error validating token:', err);
+        setError('Error al validar el enlace. Por favor, intenta nuevamente.');
+      } finally {
+        setValidatingToken(false);
+      }
+    };
+
+    validateToken();
+  }, []);
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,12 +86,55 @@ export function ResetPassword() {
         window.location.href = '/';
       }, 3000);
     } catch (err: any) {
+      console.error('Error updating password:', err);
       setError(err.message || 'Error al actualizar la contraseña');
     } finally {
       setLoading(false);
     }
   };
 
+  // Pantalla de carga mientras valida el token
+  if (validatingToken) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 p-4">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Validando enlace...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Pantalla de error si el token no es válido
+  if (!tokenValid) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 p-4">
+        <div className="w-full max-w-md">
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center justify-center w-20 h-20 bg-red-100 rounded-full mb-4">
+              <AlertCircle className="w-10 h-10 text-red-600" />
+            </div>
+            <h1 className="text-gray-900 mb-2 text-2xl font-bold">Enlace Inválido</h1>
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-xl p-8">
+            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-6">
+              {error}
+            </div>
+            
+            <a
+              href="/"
+              className="block w-full text-center bg-gradient-to-r from-orange-500 to-amber-600 text-white py-3 rounded-lg hover:from-orange-600 hover:to-amber-700 transition-all shadow-lg hover:shadow-xl font-semibold"
+            >
+              Volver al inicio
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Pantalla de éxito
   if (success) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 p-4">
@@ -76,6 +160,7 @@ export function ResetPassword() {
     );
   }
 
+  // Formulario de cambio de contraseña
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 p-4">
       <div className="w-full max-w-md">
@@ -146,10 +231,10 @@ export function ResetPassword() {
           </form>
 
           <div className="mt-6 pt-6 border-t border-gray-200 text-center">
-            
+            <a
               href="/"
               className="text-orange-600 hover:text-orange-700 font-medium text-sm"
-            <a>
+            >
               Volver al inicio de sesión
             </a>
           </div>
