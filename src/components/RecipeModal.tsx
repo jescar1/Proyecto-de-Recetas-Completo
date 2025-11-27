@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Clock, Users, ChefHat, Plus, Minus, Utensils, MessageCircle, Send } from 'lucide-react';
+import { X, Clock, Users, ChefHat, Plus, Minus, Utensils, MessageCircle, Send, Trash2 } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 import { projectId, publicAnonKey } from '../utils/supabase/info';
 
@@ -37,6 +37,7 @@ interface Comment {
   userName: string;
   comment: string;
   createdAt: string;
+  userId?: string;
 }
 
 interface RecipeModalProps {
@@ -58,6 +59,8 @@ export function RecipeModal({ recipe, onClose }: RecipeModalProps) {
   const [newComment, setNewComment] = useState('');
   const [loading, setLoading] = useState(false);
   const [accessToken, setAccessToken] = useState('');
+  const [currentUserId, setCurrentUserId] = useState('');
+  const [isAdmin, setIsAdmin] = useState(false);
   const [averageRating, setAverageRating] = useState(recipe.averageRating || 0);
   const [totalRatings, setTotalRatings] = useState(recipe.totalRatings || 0);
 
@@ -78,6 +81,23 @@ export function RecipeModal({ recipe, onClose }: RecipeModalProps) {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.access_token) {
         setAccessToken(session.access_token);
+        
+        // Obtener información del usuario
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          setCurrentUserId(user.id);
+          
+          // Verificar si es admin
+          const { data: userData } = await supabase
+            .from('users')
+            .select('role')
+            .eq('id', user.id)
+            .single();
+          
+          if (userData?.role === 'admin') {
+            setIsAdmin(true);
+          }
+        }
       }
     } catch (error) {
       console.error('Error getting access token:', error);
@@ -203,6 +223,33 @@ export function RecipeModal({ recipe, onClose }: RecipeModalProps) {
       alert('Error al agregar comentario');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteComment = async (commentKey: string) => {
+    if (!confirm('¿Estás seguro de eliminar este comentario?')) return;
+
+    try {
+      const response = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/make-server-dd414dcc/admin/comments/${commentKey}`,
+        {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+          },
+        }
+      );
+
+      if (response.ok) {
+        setComments(comments.filter(c => c.key !== commentKey));
+        alert('Comentario eliminado exitosamente');
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Error al eliminar el comentario');
+      }
+    } catch (error) {
+      console.error('Error al eliminar comentario:', error);
+      alert('Error al eliminar el comentario');
     }
   };
 
@@ -437,15 +484,26 @@ export function RecipeModal({ recipe, onClose }: RecipeModalProps) {
                 comments.map((comment) => (
                   <div key={comment.key} className="bg-white border border-gray-200 p-4 rounded-lg">
                     <div className="flex items-start justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-amber-600 rounded-full flex items-center justify-center text-white">
+                      <div className="flex items-center gap-2 flex-1">
+                        <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-amber-600 rounded-full flex items-center justify-center text-white flex-shrink-0">
                           {comment.userName.charAt(0).toUpperCase()}
                         </div>
-                        <span className="text-gray-900">{comment.userName}</span>
+                        <div className="flex-1 min-w-0">
+                          <span className="text-gray-900 font-medium truncate block">{comment.userName}</span>
+                          <span className="text-gray-500 text-sm">{formatDate(comment.createdAt)}</span>
+                        </div>
                       </div>
-                      <span className="text-gray-500">{formatDate(comment.createdAt)}</span>
+                      {isAdmin && (
+                        <button
+                          onClick={() => handleDeleteComment(comment.key)}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0 ml-2"
+                          title="Eliminar comentario (Admin)"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
                     </div>
-                    <p className="text-gray-700 ml-10">{comment.comment}</p>
+                    <p className="text-gray-700 ml-10 break-words">{comment.comment}</p>
                   </div>
                 ))
               )}
